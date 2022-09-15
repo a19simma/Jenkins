@@ -1,0 +1,54 @@
+version: "3.9"
+services:
+  jenkins:
+    build: .
+    privileged: true
+    ports:
+      - 8080
+    expose:
+      - 50000
+    container_name: jenkins
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - jenkins-docker-certs:/certs/client:ro
+    environment:
+      - DOCKER_HOST=tcp://jenkins:2376
+      - DOCKER_CERT_PATH=/certs/client
+      - DOCKER_TLS_VERIFY=1
+    restart: on-failure
+
+  dind:
+    image: docker:dind
+    container_name: jenkins-docker
+    privileged: true
+    user: root
+    expose:
+      - 2376
+    volumes:
+      - jenkins-docker-certs:/certs/client
+      - jenkins-data:/var/jenkins_home
+    environment:
+      - DOCKER_TLS_CERTDIR=/certs
+    restart: on-failure
+
+  agent:
+    image: jenkins/ssh-agent:jdk11
+    privileged: true
+    user: root
+    container_name: agent
+    expose:
+      - 22
+    environment:
+      - JENKINS_AGENT_SSH_PUBKEY=changeme
+    restart: on-failure
+
+networks:
+  default:
+    name: jenkins
+  nginx:
+    name: proxy
+    external: true
+
+volumes:
+  jenkins-data:
+  jenkins-docker-certs:
